@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Marker Animations</title>
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+        <script async defer
+    src="https://maps.googleapis.com/maps/api/js?callback=initMap">
+    var marker;   </script>
+    <script>
+    var map;
+    var directionDisplay;
+    var directionsService;
+    var stepDisplay;
+    var position;
+    var marker_arr = [];
+    var polyline = [];
+    var poly2 = [];
+    var poly = null;
+    var startLocation = [];
+    var endLocation = [];
+    var timerHandle = [];
+    var startLoc = new Array();
+    var endLoc = new Array();
+    var prefered_driver = new Array();
+    var preferred_marker = new Array();
+    var markersArray = new Array();
+    var car_speed = new Array();
+    var car_step = new Array();
+    var speed, wait = 0;
+    var infowindow = null;
+    var lastVertex = 1;
+    var stepnum = 0;
+    var step = 0.81; // 5; // metres
+    var tick = 1; // milliseconds
+    var eol = [];
+    var myPano;
+    var panoClient;
+    var nextPanoId;
+    var golbal_timer_val=120;
+    var radiusInKm = "1";
+    var Colors = ["#FF0000", "#00FF00", "#0000FF"];
+    //var loder_time_out_rider_booking=120000;
+    'use strict';
+    var car_direction_angle=0;
+    var start_array=[];
+    var end_array=[];
+    var latlng_distance_array=[];
+
+      // The following example creates a marker in Stockholm, Sweden using a DROP
+      // animation. Clicking on the marker will toggle the animation between a BOUNCE
+      // animation and no animation.
+
+      var marker;
+
+      function initMap() {
+          map = new google.maps.Map(document.getElementById('map'), {
+            zoom: 13,
+            center: {lat: 22.5735, lng: 88.4331}
+          });
+       /*  
+          marker = new google.maps.Marker({
+            map: map,
+            draggable: true,
+            animation: google.maps.Animation.DROP,
+            position: {lat: 22.5735, lng: 88.4331}
+          });
+          marker.addListener('click', toggleBounce);
+        */
+          var data=[{
+              "latitude" :22.5735,
+              "longitude" :88.4331 ,
+              "new_latitude" :22.5735,
+              "new_longitude" :88.4311,
+              "distance"      :1,
+          },{
+              "latitude" :22.5785,
+              "longitude" :88.4231 ,
+              "new_latitude" :22.5725,
+              "new_longitude" :88.4411,
+              "distance"      :1,
+          },{
+              "latitude" :22.5315,
+              "longitude" :88.4334,
+              "new_latitude" :22.57365,
+              "new_longitude" :88.4381,
+              "distance"      :1,
+          }];
+        start_array=[];
+        end_array=[];
+        latlng_distance_array=[];
+        for (var i = 0; i < data.length; i++) {
+          start_array[i]          =data[i].latitude+","+data[i].longitude;
+          end_array[i]            =data[i].new_latitude+","+data[i].new_longitude;
+          latlng_distance_array[i]=data[i].distance;
+        }
+
+          setRoutes_new(start_array,end_array,latlng_distance_array);
+          setIntervalFunction();
+      }
+
+    function vehicleBearing(x1,y1,x2,y2)
+    {
+        var radians = getAtan2((y1 - y2), (x1 - x2));
+        function getAtan2(y, x) {
+          return Math.atan2(y, x);
+        };
+        var compassReading = radians * (180 / Math.PI);
+        var coordNames = ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "N"];
+        var coordIndex = Math.round(compassReading / 45);
+        if (coordIndex < 0) {
+          coordIndex = coordIndex + 8
+        };
+        return coordNames[coordIndex]; // returns the coordinate value
+    }
+    function setRoutes_new(start_array,end_array,latlng_distance_array)
+  {
+  //  $rootScope.show();
+    var start_loc_localvalue  =start_array;
+    var end_loc_localvalue    =end_array;
+    var car_movement_distance =latlng_distance_array;
+    var marker='';
+    var arr_lngth=end_loc_localvalue.length;
+  //  var directionsDisplay = new Array();
+    var array=[];
+   if(arr_lngth>0)
+  {
+    deleteMarker();
+    for (var i=0; i< arr_lngth; i++){
+      array =start_loc_localvalue[i].split(',');
+      end_array =end_loc_localvalue[i].split(',');
+      if(array[0]!='')
+      {
+      var marker='';
+      var lat1 = array[0];
+      var lon1 = array[1];
+      var lat2 = end_array[0];
+      var lon2 = end_array[1];
+      var total_angle=0;
+      // Compute the angle.
+      var angle = - Math.atan2( Math.sin( lon1 - lon2 ) * Math.cos( lat2 ), Math.cos( lat1 ) * Math.sin( lat2 ) - Math.sin( lat1 ) * Math.cos( lat2 ) * Math.cos( lon1 - lon2 ) );
+      if ( angle < 0.0 )
+      {
+      angle  += Math.PI * 2.0;
+      }
+      var direction_map_angle=vehicleBearing(lat1,lon1,lat2,lon2);
+      if(direction_map_angle=='N')
+      {
+        total_angle=0+angle;
+      }
+      if(direction_map_angle=='NE')
+      {
+        total_angle=315+angle;
+      }
+      if(direction_map_angle=='E')
+      {
+        total_angle=270+angle;
+      }
+      if(direction_map_angle=='SE')
+      {
+        total_angle=315+angle;
+      }
+      if(direction_map_angle=='S')
+      {
+        total_angle=180+angle;
+      }
+      if(direction_map_angle=='SW')
+      {
+        total_angle=135+angle;
+      }
+      if(direction_map_angle=='W')
+      {
+        total_angle=90+angle;
+      }
+      if(direction_map_angle=='NW')
+      {
+        total_angle=45+angle;
+      }
+      var symbolCar = {
+      path: "m29.395,0l-11.759,0c-3.117,0 -5.643,3.467 -5.643,6.584l0,34.804c0,3.116 2.526,5.644 5.643,5.644l11.759,0c3.116,0 5.644,-2.527 5.644,-5.644l0,-34.804c-0.002,-3.117 -2.528,-6.584 -5.644,-6.584zm4.655,14.188l0,11.665l-2.729,0.351l0,-4.806l2.729,-7.21zm-1.432,-3.415c-1.016,3.9 -2.219,8.51 -2.219,8.51l-13.768,0l-2.222,-8.51c0.001,0 8.884,-3.018 18.209,0zm-16.877,10.94l0,4.492l-2.73,-0.349l0,-11.354l2.73,7.211zm-2.73,16.225l0,-10.359l2.73,0.343l0,8.196l-2.73,1.82zm1.557,2.944l2.218,-3.336l13.771,0l2.219,3.336l-18.208,0zm16.753,-5.077l0,-7.872l2.729,-0.355l0,10.048l-2.729,-1.821z",
+      strokeColor: '#000000',
+      fillColor: '#000000',
+      fillOpacity: .4,
+      rotation: total_angle,
+      scale: .75,
+      };
+      
+    var CarPosition=new google.maps.LatLng(array[0],array[1]);
+         marker = new google.maps.Marker({
+          position: CarPosition,
+          map: map,
+          zIndex: 5,
+          title:"new car position of car number "+(i+1),
+          icon: symbolCar
+        });
+        markersArray.push(marker);
+        var rendererOptions = {
+          map: map,
+          suppressMarkers : true,
+          suppressPolylines :true,
+          preserveViewport: true
+        }
+      }else{
+        deleteMarker();
+        var request='';
+        array=[];
+      }
+    }
+    deleteMarker();
+  }else{
+    deleteMarker();
+    var request='';
+  }
+//-----------------------------------------------------------------------
+  function makeRouteCallback(routeNum,disp,marker,car_distance,request){  
+    //console.log(routeNum);
+        if (polyline[routeNum] && (polyline[routeNum].getMap() != null)) {
+      
+      //   startAnimation(routeNum,car_distance);
+      deleteMarker();
+         return;
+    
+        }
+        return function(response, status){
+      if (status == google.maps.DirectionsStatus.OK){
+        var bounds = new google.maps.LatLngBounds();
+        var route = response.routes[0];
+        startLocation[routeNum] = new Object();
+        endLocation[routeNum] = new Object();
+        polyline[routeNum] = new google.maps.Polyline({
+        path: [],
+        strokeColor: '#000000',
+        strokeWeight: 3
+        });
+        poly2[routeNum] = new google.maps.Polyline({
+        path: [],
+        strokeColor: '#000000',
+        strokeWeight: 3
+        });     
+        // For each route, display summary information.
+        var path = response.routes[0].overview_path;
+        var legs = response.routes[0].legs;
+        disp = new google.maps.DirectionsRenderer(rendererOptions);     
+      //  disp.setMap(null);
+        disp.setDirections(response);
+      
+        //Markers 
+        for (i=0;i<legs.length;i++) {
+          if (i == 0) { 
+            startLocation[routeNum].latlng = legs[i].start_location;
+            startLocation[routeNum].address = legs[i].start_address;
+          }
+        //  marker_arr.push(marker);
+          marker_arr[routeNum] = marker;
+          endLocation[routeNum].latlng = legs[i].end_location;
+          endLocation[routeNum].address = legs[i].end_address;
+        }
+      }else {
+        
+        deleteMarker();
+      //  false;
+      //  alert(status);
+      }
+         polyline[routeNum].setMap(null);
+      if(request.origin!=request.destination)
+      {
+      //  startAnimation(routeNum,car_distance);
+        
+      }
+    } // else alert("Directions request failed: "+status);
+  }
+//  $rootScope.hide();
+}
+//------------------------Updating the path of polyline-----------------------------------             
+ function updatePoly(i,d) { 
+ // Spawn a new polyline every 20 vertices, because updating a 100-vertex poly is too slow
+    if (poly2[i].getPath().getLength() > 100) {
+          poly2[i]=new google.maps.Polyline([polyline[i].getPath().getAt(lastVertex-1)]);
+          // map.addOverlay(poly2)
+        }
+    if (polyline[i].GetIndexAtDistance(d) < lastVertex+2) {
+        if (poly2[i].getPath().getLength()>1) {
+            poly2[i].getPath().removeAt(poly2[i].getPath().getLength()-1)
+        }
+            poly2[i].getPath().insertAt(poly2[i].getPath().getLength(),polyline[i].GetPointAtDistance(d));
+    } else {
+        poly2[i].getPath().insertAt(poly2[i].getPath().getLength(),endLocation[i].latlng);
+    }
+ }
+//------------------------------------------------------------------
+function animate(index,d,car_distance) {
+  
+  if(marker_arr.length>0)
+    {
+      if (d>eol[index]) {
+        marker_arr[index].setPosition(endLocation[index].latlng);
+        return;
+      }
+      var p = polyline[index].GetPointAtDistance(d);
+      marker_arr[index].setPosition(p);
+      updatePoly(index,d);
+      timerHandle[index] =$timeout(function() {
+      var car_step=car_distance/2.10;
+        new_ln=d+car_step;
+        animate(index,new_ln,car_distance); // Allow time for the initial map display
+        
+          }, tick);
+    }
+}
+
+function setIntervalFunction()
+{
+  setInterval(function(){ 
+
+    var changes=Math.random()/50;
+     var data=[{
+              "latitude" :22.5715+changes,
+              "longitude" :88.4031+changes ,
+              "new_latitude" :22.5735+changes,
+              "new_longitude" :88.4311+changes,
+              "distance"      :1,
+          },{
+              "latitude" :22.5755-changes/2,
+              "longitude" :88.4031+changes/2,
+              "new_latitude" :22.5725+.0031,
+              "new_longitude" :88.4411+.0021,
+              "distance"      :1,
+          },{
+              "latitude" :22.5312+changes,
+              "longitude" :88.4304-changes,
+              "new_latitude" :22.57365-changes,
+              "new_longitude" :88.4381-changes,
+              "distance"      :1,
+          }];
+        start_array=[];
+        end_array=[];
+        latlng_distance_array=[];
+        for (var i = 0; i < data.length; i++) {
+          start_array[i]          =data[i].latitude+","+data[i].longitude;
+          end_array[i]            =data[i].new_latitude+","+data[i].new_longitude;
+          latlng_distance_array[i]=data[i].distance;
+        }
+
+        // we are using it to delete the existing marker
+         if (markersArray.length > 0)
+          {
+            for(j=0;j<markersArray.length;j++)
+            {
+                      markersArray[j].setMap(null);
+            }
+                    markersArray.length = 0;
+          }
+
+          setRoutes_new(start_array,end_array,latlng_distance_array);
+   }, 5000);
+ }
+ function deleteMarker() {
+  
+ }
+
+</script>
+  </body>
+</html>
